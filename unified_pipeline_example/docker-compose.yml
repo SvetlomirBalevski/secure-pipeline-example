@@ -1,5 +1,8 @@
 version: '3'
 
+networks:
+  jenkins:
+
 services:
   jenkins:
     build:
@@ -9,7 +12,34 @@ services:
       - 8080:8080
       - 50000:50000
     volumes:
-      - jenkins_home:/var/jenkins_home
+      - jenkins_home:/var/jenkins_home:rw
+      - jenkins_docker-certs:/certs/client:ro
+    environment:
+    - DOCKER_HOST=tcp://docker:2376
+    - DOCKER_CERT_PATH=/certs/client
+    - DOCKER_TLS_VERIFY=1
+    networks:
+      jenkins:
+        aliases:
+          - docker
+
+  docker-in-docker:
+    image: docker:dind
+    privileged: true
+    ports:
+    - 2376:2376
+    volumes:
+    - jenkins_docker-certs:/certs/client
+    - jenkins_home:/var/jenkins_home
+    environment:
+    - DOCKER_TLS_CERTDIR=/certs
+    networks:
+      jenkins:
+        aliases:
+          - docker
+    command: --storage-driver=overlay2
+
+
   sonarqube:
     image: sonarqube:7.7-community
     ports:
@@ -41,5 +71,6 @@ services:
 
 volumes:
   jenkins_home:
+  jenkins_docker-certs:
   webgoat:
   zap:
